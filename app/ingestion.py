@@ -5,7 +5,7 @@ from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_core.documents import Document
 from langchain_ollama import OllamaEmbeddings
 from langchain_postgres import PGVector
-from langchain_text_splitters import CharacterTextSplitter
+from langchain_text_splitters.markdown import MarkdownTextSplitter
 
 from app.settings import Settings
 
@@ -40,7 +40,7 @@ def _split_documents(documents: Iterable[Document]) -> list[Document]:
     Returns:
         A list of Document objects that have been split into chunks.
     """
-    text_splitter = CharacterTextSplitter(
+    text_splitter = MarkdownTextSplitter(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP,
         length_function=len,
