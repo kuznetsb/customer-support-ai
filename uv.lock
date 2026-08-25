@@ -298,6 +298,7 @@ dependencies = [
     { name = "langchain-ollama" },
     { name = "langchain-postgres" },
     { name = "langchain-text-splitters" },
+    { name = "pydantic-settings" },
     { name = "streamlit" },
 ]
 
@@ -312,6 +313,7 @@ requires-dist = [
     { name = "langchain-ollama", specifier = ">=1.1.0" },
     { name = "langchain-postgres", specifier = ">=0.0.17" },
     { name = "langchain-text-splitters", specifier = ">=1.1.2" },
+    { name = "pydantic-settings", specifier = ">=2.15.0" },
     { name = "streamlit", specifier = ">=1.62.0" },
 ]
 
