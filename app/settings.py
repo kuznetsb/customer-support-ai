@@ -33,12 +33,14 @@ class DatabaseSettings:
 class OllamaSettings:
     base_url: str = "http://localhost:11434"
     embedding_model: str = "nomic-embed-text"
+    llm_model: str = "llama3.2"
 
     @classmethod
     def from_env(cls) -> OllamaSettings:
         return cls(
             base_url=os.getenv("OLLAMA_BASE_URL", cls.base_url),
             embedding_model=os.getenv("OLLAMA_EMBEDDING_MODEL", cls.embedding_model),
+            llm_model=os.getenv("OLLAMA_LLM_MODEL", cls.llm_model),
         )
 
 
