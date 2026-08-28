@@ -33,6 +33,8 @@ services:
   app:
     build: .
     container_name: streamlit_rag
+    env_file:
+      - .env
     ports:
       - "8501:8501"
     environment:
