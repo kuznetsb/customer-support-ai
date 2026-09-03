@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from pydantic import Field, field_validator
@@ -40,6 +41,7 @@ class VectorStoreSettings(AppBaseSettings):
 
 class Settings(AppBaseSettings):
     data_dir: Path = Field(default=DEFAULT_DATA_DIR, validation_alias="DATA_DIR")
+    log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     ollama: OllamaSettings = Field(default_factory=OllamaSettings)
     vector_store: VectorStoreSettings = Field(default_factory=VectorStoreSettings)
@@ -54,3 +56,11 @@ class Settings(AppBaseSettings):
         if not path.is_absolute():
             path = PROJECT_ROOT / path
         return path.resolve()
+
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def validate_log_level(cls, value: str | None) -> str:
+        level = str(value or "INFO").upper()
+        if level not in logging.getLevelNamesMapping():
+            raise ValueError(f"Unsupported log level: {value}")
+        return level

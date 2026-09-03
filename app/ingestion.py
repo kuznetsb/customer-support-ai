@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from settings import Settings
 CHUNK_SIZE = 700
 CHUNK_OVERLAP = 75
 SECTION_METADATA_KEYS = ("section", "subsection", "subsection_detail")
+logger = logging.getLogger(__name__)
 
 
 def _section_context(document: Document) -> str:
@@ -96,12 +98,15 @@ def ingest_documents(settings: Settings) -> int:
     Returns:
         The number of documents ingested into the vector store.
     """
+    logger.info("Starting knowledge-base ingestion from %s", settings.data_dir)
     try:
         documents = _load_markdown_documents(settings.data_dir)
         if not documents:
+            logger.info("No Markdown documents found for knowledge-base ingestion")
             return 0
 
         documents = _split_documents(documents)
+        logger.info("Prepared %d document chunks for vector storage", len(documents))
 
         embeddings = OllamaEmbeddings(
             model=settings.ollama.embedding_model,
@@ -114,8 +119,10 @@ def ingest_documents(settings: Settings) -> int:
             use_jsonb=True,
         )
         vector_store.add_documents(documents)
+        logger.info("Knowledge-base ingestion completed: %d chunks", len(documents))
         return len(documents)
     except Exception as error:
+        logger.exception("Knowledge-base ingestion failed")
         raise DocumentIngestionError(
             f"Could not ingest documents from {settings.data_dir}."
         ) from error
