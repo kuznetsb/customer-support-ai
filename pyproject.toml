@@ -27,7 +27,7 @@ build-backend = "uv_build"
 package = false
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
+pythonpath = ["app"]
 
 [dependency-groups]
 dev = [

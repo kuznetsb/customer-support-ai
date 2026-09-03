@@ -4,9 +4,8 @@ from io import StringIO
 from uuid import UUID
 
 import pytest
-
-from app.logging_config import TRACE_ID, configure_logging, trace_context
-from app.settings import Settings
+from logging_config import TRACE_ID, configure_logging, trace_context
+from settings import Settings
 
 
 @pytest.fixture(autouse=True)

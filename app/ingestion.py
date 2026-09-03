@@ -1,3 +1,4 @@
+import hashlib
 import logging
 from collections.abc import Iterable
 from pathlib import Path
@@ -17,6 +18,11 @@ CHUNK_SIZE = 700
 CHUNK_OVERLAP = 75
 SECTION_METADATA_KEYS = ("section", "subsection", "subsection_detail")
 logger = logging.getLogger(__name__)
+
+
+def _document_id(document: Document, index: int) -> str:
+    source = str(document.metadata.get("source", ""))
+    return hashlib.sha256(f"{source}:{index}".encode()).hexdigest()
 
 
 def _section_context(document: Document) -> str:
@@ -118,7 +124,13 @@ def ingest_documents(settings: Settings) -> int:
             connection=settings.database.url,
             use_jsonb=True,
         )
-        vector_store.add_documents(documents)
+        vector_store.add_documents(
+            documents,
+            ids=[
+                _document_id(document, index)
+                for index, document in enumerate(documents)
+            ],
+        )
         logger.info("Knowledge-base ingestion completed: %d chunks", len(documents))
         return len(documents)
     except Exception as error:
