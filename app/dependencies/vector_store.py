@@ -25,7 +25,19 @@ def get_vector_store(
     )
 
 
-def get_vector_store_for_settings(settings: Settings) -> PGVector:
+def get_vector_store_for_settings(settings: Settings | None = None) -> PGVector:
+    """Return the cached vector store for explicit or default settings.
+
+    Args:
+        settings: Optional application settings. If omitted, ``Settings()`` is
+            used to load the configured defaults.
+
+    Returns:
+        The singleton vector store associated with the settings.
+    """
+    if settings is None:
+        settings = Settings()
+
     key = (
         settings.database.url,
         settings.vector_store.collection_name,

@@ -136,7 +136,7 @@ def ingest_documents(settings: Settings) -> int:
         documents = _split_documents(documents)
         logger.info("Prepared %d document chunks for vector storage", len(documents))
 
-        vector_store = get_vector_store_for_settings(settings)
+        vector_store = get_vector_store_for_settings()
         vector_store.add_documents(
             documents,
             ids=[
