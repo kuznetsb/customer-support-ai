@@ -3,11 +3,10 @@ import logging
 from collections.abc import Iterable
 from pathlib import Path
 
+from dependencies.vector_store import get_vector_store_for_settings
 from exceptions import DocumentIngestionError
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_core.documents import Document
-from langchain_ollama import OllamaEmbeddings
-from langchain_postgres import PGVector
 from langchain_text_splitters.markdown import (
     MarkdownHeaderTextSplitter,
     MarkdownTextSplitter,
@@ -21,11 +20,28 @@ logger = logging.getLogger(__name__)
 
 
 def _document_id(document: Document, index: int) -> str:
+    """Return a stable identifier for a document's source and position.
+
+    Args:
+        document: Document whose source metadata is used to build the ID.
+        index: Position of the document in the ingestion batch.
+
+    Returns:
+        A SHA-256 hexadecimal identifier.
+    """
     source = str(document.metadata.get("source", ""))
     return hashlib.sha256(f"{source}:{index}".encode()).hexdigest()
 
 
 def _section_context(document: Document) -> str:
+    """Build the section heading context prefixed to a document chunk.
+
+    Args:
+        document: Document containing section metadata.
+
+    Returns:
+        A formatted section reference, or a document preface marker.
+    """
     section_parts = [
         str(document.metadata[key])
         for key in SECTION_METADATA_KEYS
@@ -36,12 +52,13 @@ def _section_context(document: Document) -> str:
 
 
 def _load_markdown_documents(data_dir: Path) -> list[Document]:
-    """
-    Helper that loads all Markdown files below data_dir and return vector-store documents.
+    """Load Markdown documents recursively from a data directory.
+
     Args:
-        data_dir: The directory to read Markdown files from.
+        data_dir: Directory containing the Markdown knowledge base.
+
     Returns:
-        A list of Document objects created from the Markdown files.
+        The loaded Markdown documents.
     """
     loader = DirectoryLoader(
         str(data_dir),
@@ -50,17 +67,17 @@ def _load_markdown_documents(data_dir: Path) -> list[Document]:
         loader_cls=TextLoader,
         loader_kwargs={"encoding": "utf-8"},
     )
-    documents = loader.load()
-    return documents
+    return loader.load()
 
 
 def _split_documents(documents: Iterable[Document]) -> list[Document]:
-    """
-    Helper that splits documents into chunks of CHUNK_SIZE with CHUNK_OVERLAP.
+    """Split documents into context-preserving chunks for vector storage.
+
     Args:
-        documents: An iterable of Document objects to be split.
+        documents: Documents to split by Markdown headings and chunk size.
+
     Returns:
-        A list of Document objects that have been split into chunks.
+        Chunked documents with section context and inherited metadata.
     """
     header_splitter = MarkdownHeaderTextSplitter(
         headers_to_split_on=[
@@ -97,12 +114,17 @@ def _split_documents(documents: Iterable[Document]) -> list[Document]:
 
 
 def ingest_documents(settings: Settings) -> int:
-    """
-    Ingests documents from the specified data directory into the vector store.
+    """Ingest Markdown knowledge-base documents into the vector store.
+
     Args:
-        settings: An instance of the Settings class containing configuration.
+        settings: Application settings containing the data directory and vector
+            store configuration.
+
     Returns:
-        The number of documents ingested into the vector store.
+        The number of document chunks ingested, or zero when no documents exist.
+
+    Raises:
+        DocumentIngestionError: If loading, splitting, or storing documents fails.
     """
     logger.info("Starting knowledge-base ingestion from %s", settings.data_dir)
     try:
@@ -114,16 +136,7 @@ def ingest_documents(settings: Settings) -> int:
         documents = _split_documents(documents)
         logger.info("Prepared %d document chunks for vector storage", len(documents))
 
-        embeddings = OllamaEmbeddings(
-            model=settings.ollama.embedding_model,
-            base_url=settings.ollama.base_url,
-        )
-        vector_store = PGVector(
-            embeddings=embeddings,
-            collection_name=settings.vector_store.collection_name,
-            connection=settings.database.url,
-            use_jsonb=True,
-        )
+        vector_store = get_vector_store_for_settings(settings)
         vector_store.add_documents(
             documents,
             ids=[

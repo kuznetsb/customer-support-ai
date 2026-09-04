@@ -1,5 +1,6 @@
-import ingestion
 import pytest
+from backend import ingestion
+from dependencies.vector_store import get_vector_store_for_settings
 from exceptions import DocumentIngestionError
 from langchain_core.documents import Document
 from settings import DatabaseSettings, Settings, VectorStoreSettings
@@ -35,10 +36,6 @@ def test_ingest_documents_uses_stable_ids(monkeypatch, tmp_path) -> None:
     ]
     added = {}
 
-    class FakeEmbeddings:
-        def __init__(self, **kwargs):
-            self.options = kwargs
-
     class FakePGVector:
         def __init__(self, **kwargs):
             self.options = kwargs
@@ -49,8 +46,7 @@ def test_ingest_documents_uses_stable_ids(monkeypatch, tmp_path) -> None:
 
     monkeypatch.setattr(ingestion, "_load_markdown_documents", lambda _: documents)
     monkeypatch.setattr(ingestion, "_split_documents", lambda _: documents)
-    monkeypatch.setattr(ingestion, "OllamaEmbeddings", FakeEmbeddings)
-    monkeypatch.setattr(ingestion, "PGVector", FakePGVector)
+    monkeypatch.setattr("dependencies.vector_store.PGVector", FakePGVector)
 
     result = ingestion.ingest_documents(_settings(tmp_path))
 
@@ -73,6 +69,26 @@ def test_ingest_documents_returns_zero_without_documents(monkeypatch, tmp_path) 
     result = ingestion.ingest_documents(_settings(tmp_path))
 
     assert result == 0
+
+
+def test_get_vector_store_reuses_cached_instance(monkeypatch, tmp_path) -> None:
+    settings = _settings(tmp_path)
+    created = []
+
+    class FakePGVector:
+        def __init__(self, **kwargs):
+            created.append(kwargs)
+            self.kwargs = kwargs
+
+    monkeypatch.setattr("dependencies.vector_store.PGVector", FakePGVector)
+
+    first = get_vector_store_for_settings(settings)
+    second = get_vector_store_for_settings(settings)
+
+    assert first is second
+    assert len(created) == 1
+    assert first.kwargs["collection_name"] == "test-collection"
+    assert first.kwargs["connection"] == "postgresql://test"
 
 
 def test_ingest_documents_wraps_failures(monkeypatch, tmp_path) -> None:
