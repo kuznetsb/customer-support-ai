@@ -12,6 +12,10 @@ def test_retrieve_context_searches_and_serializes_documents(monkeypatch) -> None
             page_content="Refunds are available within 30 days.",
             metadata={"source": "returns.md"},
         ),
+        Document(
+            page_content="Refunds are available within 30 days.",
+            metadata={"source": "different-metadata.md"},
+        ),
         Document(page_content="Contact support for help."),
     ]
 
@@ -33,6 +37,8 @@ def test_retrieve_context_searches_and_serializes_documents(monkeypatch) -> None
 
     assert serialized == (
         "Source: returns.md\n\nContent: Refunds are available within 30 days.\n\n"
+        "Source: different-metadata.md\n\n"
+        "Content: Refunds are available within 30 days.\n\n"
         "Source: unknown\n\nContent: Contact support for help."
     )
     assert artifact == documents

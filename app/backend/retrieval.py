@@ -47,9 +47,10 @@ def run_llm(query: str, settings: Settings) -> dict[str, Any]:
     )
     system_prompt = (
         "You are a helpful customer support assistant. "
-        "Always use the retrieve_context tool to search the support knowledge base "
-        "before answering questions. Base your answer only on the retrieved context. "
-        "If the context does not contain enough information, respond with "
+        "For greetings, thanks, and casual conversation, respond naturally without using tools. "
+        "For customer-support questions, always use the retrieve_context tool first. "
+        "Base support answers only on the provided context. "
+        "If the context does not contain enough information, say "
         '"I don\'t know based on the available support information." '
         "Do not invent policies, orders, dates, or explanations."
     )
