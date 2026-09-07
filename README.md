@@ -86,7 +86,7 @@ For running the Python test suite locally, also install:
 2. Start PostgreSQL, Ollama, and Streamlit:
 
 	 ```bash
-	 docker compose up -d
+	 docker compose up -d --build
 	 ```
 
 	 Compose runs the one-shot `migrate` service after PostgreSQL is healthy.
