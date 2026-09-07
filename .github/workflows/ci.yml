@@ -70,6 +70,24 @@ jobs:
       - name: List Compose services
         run: docker compose config --services
 
+  migration:
+    name: Apply database migrations
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Provide CI environment defaults
+        run: cp .env.sample .env
+
+      - name: Apply migrations against PostgreSQL
+        run: docker compose up --build --abort-on-container-exit --exit-code-from migrate migrate
+
+      - name: Clean up migration database
+        if: always()
+        run: docker compose down -v
+
   container:
     name: Build and smoke-test image
     runs-on: ubuntu-latest

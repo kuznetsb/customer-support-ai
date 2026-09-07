@@ -236,6 +236,8 @@ smoke-tests the image before packaging the release artifact. The pipeline:
   compilation checks;
 - validates the Docker Compose configuration without starting PostgreSQL or
   downloading Ollama models;
+- applies the committed Alembic migrations against PostgreSQL in pull request
+  validation;
 - builds the application image and verifies its Streamlit dependency command;
 - packages the verified image on `main` as a downloadable release artifact.
 
