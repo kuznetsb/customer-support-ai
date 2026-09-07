@@ -1,0 +1,125 @@
+name: CI/CD
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-cd-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_NAME: customer-support-ai
+  IMAGE_TAG: customer-support-ai:${{ github.sha }}
+
+jobs:
+  quality:
+    name: Quality checks
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: latest
+          enable-cache: true
+
+      - name: Install locked dependencies
+        run: uv sync --locked --dev
+
+      - name: Run lint checks
+        run: uv run ruff check app
+
+      - name: Check formatting
+        run: uv run ruff format --check app
+
+      - name: Run tests
+        run: uv run pytest app/tests
+
+      - name: Compile application modules
+        run: uv run python -m compileall -q app
+
+  compose-validate:
+    name: Validate Compose configuration
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Provide CI environment defaults
+        run: cp .env.sample .env
+
+      - name: Validate Compose file
+        run: docker compose config --quiet
+
+      - name: List Compose services
+        run: docker compose config --services
+
+  container:
+    name: Build and smoke-test image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build application image
+        run: docker build --tag "$IMAGE_TAG" .
+
+      - name: Inspect image metadata
+        run: docker image inspect "$IMAGE_TAG"
+
+      - name: Smoke-test application dependencies
+        run: docker run --rm "$IMAGE_TAG" uv run streamlit --version
+
+      - name: Export release candidate
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        run: docker save "$IMAGE_TAG" | gzip > customer-support-ai-image.tar.gz
+
+      - name: Upload release candidate
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-support-ai-image-${{ github.sha }}
+          path: customer-support-ai-image.tar.gz
+          retention-days: 1
+          if-no-files-found: error
+
+  package:
+    name: Publish release artifact
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: container
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release candidate
+        uses: actions/download-artifact@v4
+        with:
+          name: customer-support-ai-image-${{ github.sha }}
+
+      - name: Create release metadata
+        run: |
+          printf 'commit=%s\nimage=%s\n' "$GITHUB_SHA" "$IMAGE_TAG" > release-metadata.txt
+
+      - name: Upload release package
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-support-ai-release-${{ github.sha }}
+          path: |
+            customer-support-ai-image.tar.gz
+            release-metadata.txt
+          retention-days: 14
+          if-no-files-found: error
