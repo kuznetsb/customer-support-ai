@@ -208,6 +208,24 @@ configured:
 uv run streamlit run app/main.py
 ```
 
+## CI/CD Automation
+
+GitHub Actions runs on pull requests and pushes to `main`. Pull requests run
+the full validation suite. After a merge, the `main` workflow only rebuilds and
+smoke-tests the image before packaging the release artifact. The pipeline:
+
+- installs the locked `uv` environment and runs Ruff, pytest, and Python
+  compilation checks;
+- validates the Docker Compose configuration without starting PostgreSQL or
+  downloading Ollama models;
+- builds the application image and verifies its Streamlit dependency command;
+- packages the verified image on `main` as a downloadable release artifact.
+
+The release artifact contains `customer-support-ai-image.tar.gz` and
+`release-metadata.txt`. It is a deployment handoff rather than a cloud
+deployment; the application still requires PostgreSQL, PGVector, Ollama, and
+the configured models at runtime.
+
 ## Logging and Diagnostics
 
 The application uses Python's standard `logging` package and writes logs to
