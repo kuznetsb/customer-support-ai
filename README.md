@@ -86,8 +86,11 @@ For running the Python test suite locally, also install:
 2. Start PostgreSQL, Ollama, and Streamlit:
 
 	 ```bash
-	 docker compose up -d
+	 docker compose up -d --build
 	 ```
+
+	 Compose runs the one-shot `migrate` service after PostgreSQL is healthy.
+	The Streamlit app starts only after `alembic upgrade head` succeeds.
 
 	 The first startup may take several minutes because Ollama downloads the
 	 configured embedding and chat models.
@@ -187,6 +190,21 @@ Install the locked dependencies, including development tools:
 uv sync --locked --dev
 ```
 
+Apply database migrations after PostgreSQL is available:
+
+```bash
+uv run alembic upgrade head
+```
+
+When using Docker Compose, migrations are applied automatically by the
+`migrate` service before the `app` service starts.
+
+Inspect the migration SQL without connecting to PostgreSQL:
+
+```bash
+uv run alembic upgrade head --sql
+```
+
 Run all tests:
 
 ```bash
@@ -218,6 +236,8 @@ smoke-tests the image before packaging the release artifact. The pipeline:
   compilation checks;
 - validates the Docker Compose configuration without starting PostgreSQL or
   downloading Ollama models;
+- applies the committed Alembic migrations against PostgreSQL in pull request
+  validation;
 - builds the application image and verifies its Streamlit dependency command;
 - packages the verified image on `main` as a downloadable release artifact.
 
