@@ -1,4 +1,5 @@
-from collections.abc import Iterator
+from collections.abc import Generator
+from contextlib import contextmanager
 from functools import cache
 
 from settings import Settings
@@ -13,7 +14,8 @@ def get_session_factory(database_url: str) -> sessionmaker[Session]:
     return sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
-def get_session(settings: Settings | None = None) -> Iterator[Session]:
+@contextmanager
+def get_session(settings: Settings | None = None) -> Generator[Session]:
     """Yield a transactional session without creating database tables."""
     resolved_settings = settings or Settings()
     session = get_session_factory(resolved_settings.database.url)()

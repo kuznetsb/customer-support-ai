@@ -1,8 +1,11 @@
 import logging
+from uuid import UUID, uuid4
 
 import streamlit as st
+from backend.feedback import save_agent_turn, save_feedback
 from backend.ingestion import ingest_documents
 from backend.retrieval import run_llm
+from db.models import Rating
 from exceptions import DocumentIngestionError
 from langchain_core.documents import Document
 from logging_config import configure_logging, trace_context
@@ -32,6 +35,37 @@ def _render_sources(documents: list[Document]) -> None:
             st.markdown(content if separator else document.page_content)
 
 
+def _render_feedback(message: dict, settings: Settings) -> None:
+    """Render and persist a thumbs rating for an assistant response."""
+    turn_id = message.get("turn_id")
+    session_id = message.get("session_id")
+    if not turn_id or not session_id:
+        return
+
+    rating = st.feedback(
+        "thumbs",
+        key=f"feedback_{turn_id}",
+        disabled=message.get("feedback_submitted", False),
+    )
+    if rating is None or message.get("feedback_submitted", False):
+        return
+
+    selected_rating = Rating.HELPFUL if rating == 1 else Rating.UNHELPFUL
+    try:
+        save_feedback(
+            settings=settings,
+            turn_id=UUID(turn_id),
+            session_id=UUID(session_id),
+            rating=selected_rating,
+        )
+    except Exception:
+        logger.exception("Agent feedback persistence failed")
+        st.warning("Your feedback could not be saved.")
+    else:
+        message["feedback_submitted"] = True
+        st.caption("Thanks for your feedback.")
+
+
 def render_chat_interface(settings: Settings) -> None:
     """Render the chat UI and answer questions with the support agent."""
     st.subheader("Ask the agent a question")
@@ -39,20 +73,25 @@ def render_chat_interface(settings: Settings) -> None:
 
     if "chat_messages" not in st.session_state:
         st.session_state.chat_messages = []
+    if "session_id" not in st.session_state:
+        st.session_state.session_id = uuid4()
 
     for message in st.session_state.chat_messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
             if message["role"] == "assistant":
                 _render_sources(message.get("context", []))
+                _render_feedback(message, settings)
 
     prompt = st.chat_input("Ask about shipping, returns, or your order...")
     if prompt:
         st.session_state.chat_messages.append({"role": "user", "content": prompt})
+        trace_id = None
         with st.chat_message("assistant"):
             with st.spinner("Searching the support knowledge base..."):
                 try:
-                    result = run_llm(prompt, settings)
+                    with trace_context() as trace_id:
+                        result = run_llm(prompt, settings)
                 except Exception:
                     logger.exception("Support agent request failed")
                     st.error("The support agent is temporarily unavailable.")
@@ -62,13 +101,27 @@ def render_chat_interface(settings: Settings) -> None:
                     }
             st.markdown(result["answer"])
             _render_sources(result["context"])
-        st.session_state.chat_messages.append(
-            {
-                "role": "assistant",
-                "content": result["answer"],
-                "context": result["context"],
-            }
-        )
+        assistant_message = {
+            "role": "assistant",
+            "content": result["answer"],
+            "context": result["context"],
+        }
+        if trace_id is not None:
+            try:
+                turn_id = save_agent_turn(
+                    settings=settings,
+                    session_id=st.session_state.session_id,
+                    trace_id=trace_id,
+                    query=prompt,
+                    answer=result["answer"],
+                    context=result["context"],
+                )
+            except Exception:
+                logger.exception("Agent turn persistence failed")
+            else:
+                assistant_message["turn_id"] = str(turn_id)
+                assistant_message["session_id"] = str(st.session_state.session_id)
+        st.session_state.chat_messages.append(assistant_message)
         st.rerun()
 
 
