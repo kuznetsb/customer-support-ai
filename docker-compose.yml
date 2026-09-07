@@ -30,6 +30,19 @@ services:
       - ./scripts/init-ollama.sh:/init-ollama.sh
     entrypoint: ["/bin/sh", "/init-ollama.sh"]
 
+  migrate:
+    build: .
+    container_name: customer_support_migrations
+    env_file:
+      - .env
+    environment:
+      - DB_URL=postgresql+psycopg://rag_user:rag_password@postgres:5432/cs_support_rag
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["uv", "run", "alembic", "upgrade", "head"]
+    restart: "no"
+
   app:
     build: .
     container_name: streamlit_rag
@@ -45,6 +58,8 @@ services:
         condition: service_healthy
       ollama:
         condition: service_started
+      migrate:
+        condition: service_completed_successfully
     volumes:
       - ./data:/app/data
       - ./app:/app/app

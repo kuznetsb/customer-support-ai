@@ -13,6 +13,8 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --locked
 
 COPY app ./app
+COPY alembic.ini ./alembic.ini
+COPY alembic ./alembic
 
 EXPOSE 8501
 
