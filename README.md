@@ -37,10 +37,52 @@ The current workflow is:
 6. The retrieval tool performs a similarity search over the vector store.
 7. The model uses the retrieved context to formulate an answer.
 8. The UI displays the answer and the retrieved source chunks.
+9. The answered turn is persisted in PostgreSQL with its session ID, trace ID,
+   query, answer, model name, and serialized retrieved context.
+10. The user can submit a thumbs-up or thumbs-down rating for the answer. The
+    rating is created or updated for that turn and Streamlit session.
 
 The vector store and embedding objects are cached as configuration-keyed
 singletons. This allows ingestion and retrieval to reuse the same resources
 without creating a new PGVector connection for every request.
+
+## Architecture
+
+The application is organized into a small layered architecture:
+
+- **Presentation layer:** `app/main.py` contains the Streamlit page, chat
+  state, source rendering, and feedback controls.
+- **Application layer:** `app/backend/ingestion.py` coordinates document
+  loading, Markdown chunking, and vector indexing. `app/backend/retrieval.py`
+  coordinates the LangChain agent and retrieval tool. `app/backend/feedback.py`
+  persists answered turns and feedback ratings.
+- **Infrastructure layer:** `app/dependencies/vector_store.py` provides
+  cached Ollama embedding and PGVector resources. `app/db/session.py` manages
+  SQLAlchemy transactions, while `app/db/models.py` defines the feedback
+  schema models.
+- **Configuration and observability:** `app/settings.py` loads environment
+  configuration, and `app/logging_config.py` provides stdout logging with
+  operation trace IDs.
+- **Data and deployment:** Markdown knowledge is stored in `data/`;
+  PostgreSQL and Ollama run through Docker Compose; Alembic migrations under
+  `alembic/` create the feedback tables and enum type before the app starts.
+
+### Feedback Persistence
+
+Feedback is collected for each assistant response in the chat interface.
+Before a rating can be submitted, the response must have a persisted agent
+turn ID and session ID. The feedback service then:
+
+1. Stores the assistant turn and its retrieved context in the
+   `feedback.agent_turns` table.
+2. Looks up an existing rating by turn ID and session ID.
+3. Inserts a new row in `feedback.agent_feedback` when no rating exists.
+4. Updates the existing rating when the user changes their response.
+
+The database enforces one feedback row per turn and session and cascades
+feedback deletion when its parent agent turn is deleted. The feature is
+intended for demonstration and local development; production use still needs
+authentication, authorization, retention, and privacy controls.
 
 ## Project Structure
 
@@ -49,12 +91,18 @@ app/
 	backend/
 		ingestion.py       Markdown loading, chunking, and vector indexing
 		retrieval.py       Retrieval tool and LLM agent orchestration
+		feedback.py        Agent-turn and user-rating persistence
+	db/
+		models.py          SQLAlchemy models for turns and feedback
+		session.py         Transactional SQLAlchemy session management
 	dependencies/
 		vector_store.py    Cached embeddings and PGVector factories
 	main.py              Streamlit application and chat interface
 	settings.py          Environment-backed application settings
 	logging_config.py    Structured application logging and trace IDs
-	tests/               Unit tests for ingestion, retrieval, and logging
+	tests/               Unit tests for ingestion, retrieval, feedback, and logging
+alembic/
+	versions/            Database migrations for the feedback schema
 data/
 	guide_dropship_knowledge_ingestion.md
 scripts/
@@ -272,8 +320,10 @@ docker compose logs --tail=100 app
 	same source document.
 - The local model may occasionally decide to retrieve context for casual
 	messages such as greetings.
-- There is no authentication, conversation persistence, feedback collection,
-	or production-grade evaluation pipeline yet.
+- There is no authentication or authorization boundary.
+- Conversation and feedback persistence is limited to the current agent-turn
+  and rating records; there is no user identity, retention policy, deletion
+  workflow, or production-grade evaluation pipeline yet.
 - LangSmith tracing is optional and requires valid external credentials.
 
 ## Roadmap
