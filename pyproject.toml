@@ -19,6 +19,7 @@ dependencies = [
     "pydantic-settings>=2.15.0",
     "sqlalchemy>=2.0.0",
     "streamlit>=1.62.0",
+    "tqdm>=4.67.1",
 ]
 
 [project.scripts]

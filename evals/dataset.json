@@ -1,0 +1,92 @@
+[
+  {
+    "id": "shopify-integration",
+    "question": "What can I do with the Shopify integration?",
+    "expected_section": "Shopify Native Integration",
+    "should_abstain": false
+  },
+  {
+    "id": "weekly-drops",
+    "question": "When are Portfolio drops published?",
+    "expected_section": "Portfolio (\"Weekly Drops\")",
+    "should_abstain": false
+  },
+  {
+    "id": "refund-policy",
+    "question": "What are the conditions for the 14-day refund guarantee?",
+    "expected_section": "Trial & Cancellation Policies",
+    "should_abstain": false
+  },
+  {
+    "id": "free-trial",
+    "question": "How long is the free trial?",
+    "expected_section": "Trial & Cancellation Policies",
+    "should_abstain": false
+  },
+  {
+    "id": "cancellation",
+    "question": "How do I cancel my subscription?",
+    "expected_section": "Trial & Cancellation Policies",
+    "should_abstain": false
+  },
+  {
+    "id": "payment-gateways",
+    "question": "Can I pay with PayPal?",
+    "expected_section": "Supported Payment Gateways",
+    "should_abstain": false
+  },
+  {
+    "id": "supported-cards",
+    "question": "Which credit cards can I use to pay?",
+    "expected_section": "Supported Payment Gateways",
+    "should_abstain": false
+  },
+  {
+    "id": "product-tracking",
+    "question": "How often does Ultra Mode refresh tracked products?",
+    "expected_section": "Product Library & Sales Tracker",
+    "should_abstain": false
+  },
+  {
+    "id": "tracking-history",
+    "question": "How much historical product data is retained?",
+    "expected_section": "Product Library & Sales Tracker",
+    "should_abstain": false
+  },
+  {
+    "id": "ad-spend-estimator",
+    "question": "What data does the Ad Spend Estimator use?",
+    "expected_section": "Underlying Data Processing Pipeline",
+    "should_abstain": false
+  },
+  {
+    "id": "roas-formula",
+    "question": "What is the Break-Even ROAS formula?",
+    "expected_section": "Free Utility Calculators",
+    "should_abstain": false
+  },
+  {
+    "id": "sync-error",
+    "question": "How can I resolve ERR_DATA_SYNC_303?",
+    "expected_section": "Common Error Codes & Resolutions",
+    "should_abstain": false
+  },
+  {
+    "id": "extension-metrics",
+    "question": "What metrics does the Chrome extension show?",
+    "expected_section": "Chrome Extension",
+    "should_abstain": false
+  },
+  {
+    "id": "personal-order-status",
+    "question": "Where is my order right now, and what is its tracking number?",
+    "expected_section": null,
+    "should_abstain": true
+  },
+  {
+    "id": "personal-renewal-date",
+    "question": "When will my account renew, and how much will I be charged?",
+    "expected_section": null,
+    "should_abstain": true
+  }
+]

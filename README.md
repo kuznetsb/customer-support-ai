@@ -266,6 +266,19 @@ uv run ruff check app
 uv run ruff format --check app
 ```
 
+Run the manual support-answer evaluation after PostgreSQL and Ollama are
+available and the knowledge base has been ingested:
+
+```bash
+uv run python scripts/evaluate.py
+```
+
+The benchmark in `evals/dataset.json` checks whether the expected knowledge-base
+section appears in the top four retrieved chunks, whether unsupported questions
+receive the configured abstention phrase, and per-question latency. A JSON
+report is written to `evals/results/`, which is ignored by Git. The checks are a
+small regression signal, not a substitute for human review of answer quality.
+
 Run the Streamlit application outside Docker when the required PostgreSQL and
 Ollama services are available and the appropriate environment variables are
 configured:
@@ -323,7 +336,9 @@ docker compose logs --tail=100 app
 - There is no authentication or authorization boundary.
 - Conversation and feedback persistence is limited to the current agent-turn
   and rating records; there is no user identity, retention policy, deletion
-  workflow, or production-grade evaluation pipeline yet.
+	workflow, or production-grade evaluation pipeline yet.
+- The manual benchmark is small and does not assess answer correctness or
+	grounding.
 - LangSmith tracing is optional and requires valid external credentials.
 
 ## Roadmap
@@ -338,20 +353,18 @@ retry and failure handling, and clearer state transitions.
 The LangGraph migration is intended to improve control and observability while
 preserving the current RAG and Streamlit experience.
 
-### User Feedback
+### Feedback-Driven Evaluation
 
-Another planned capability is lightweight feedback collection for each answer.
-Users could mark a response as helpful or unhelpful and optionally provide a
-short explanation. Feedback would be associated with the question, answer,
-retrieved context, and application trace when available.
+Users can rate each answer as helpful or unhelpful. Feedback is associated with
+the question, answer, retrieved context, and application trace when available.
+The next step is to use reviewed feedback to improve the benchmark and compare
+future retrieval or orchestration changes.
 
-This would provide several benefits:
+This can help:
 
 - identify inaccurate, incomplete, or poorly grounded answers;
 - discover gaps and outdated information in the knowledge base;
-- measure answer quality over time with real user signals;
 - prioritize improvements to prompts, retrieval, chunking, and models;
-- create evaluation datasets from real support interactions;
 - help compare future LangGraph workflows against the current agent behavior.
 
 Feedback should be collected with appropriate privacy controls and should avoid
